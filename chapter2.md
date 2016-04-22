@@ -259,3 +259,28 @@
   * 400 Bad Request
   * 404 Not Found
   * 505 HTTP Version Not Supported
+
+## cookie技术
+
+### 为什么需要cookie?
+
+* HTTP协议唔状态，很多应用需要掌握客户端的状态
+
+### cookie技术
+
+* cookie
+  * 某些网站为了辨别用户身份、进行session跟踪而储存在用户本地终端上的数据(通常经过加密)
+* cookie的组件
+  * HTTP响应消息的cookie头部行
+  * HTTP请求消息的cookie头部行
+  * 保存在客户端主机上的cookie文件，由浏览器管理
+  * web服务器端的后台数据库
+
+### cookie的作用
+
+* cookie能够用于
+  * 身份认证
+  * 购物车
+  * 推荐
+  * web email
+* 隐私问题
