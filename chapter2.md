@@ -521,3 +521,36 @@
     * (networkutopia.com, dns1.networkutopia.com, NS)
     * (dns1.networkutopia.com, 212.212.212.212.1, A)
   * 在权威域名解析服务器中为www.networkutopia.com加入Type A记录，为networkutopia.com加入Type MX记录
+
+## P2P应用：原理与文件分发
+
+### 纯P2P架构
+
+* Peer-to-Peer
+* 没有服务器
+* 任意端系统之间直接通信
+* 节点阶段性接入Internet
+* 节点可能更换IP地址
+
+### 文件分发:BitTorrent
+
+* tracker：跟踪参与torrent的节点
+* torrent：交换同一个文件的文件块的节点组
+* 文件划分为256KB的chunk
+* 节点加入torrent
+  * 没有chunk，但是会逐渐积累
+  * 向tracker注册以获得节点清单，与某些节点(邻居)建立连接
+* 下载的同时，节点需要向其他节点上传chunk
+* 节点可能加入或离开
+* 一旦节点获得完整的文件，它可能离开或留下
+* 获取chunk
+  * 给定任一时刻，不同节点持有文件的不同chunk集合
+  * 节点定期查询每个邻居所持有的chunk列表
+  * 节点发送请求，请求获取缺失的chunk
+    * 稀缺优先
+* 发送chunk：tit-for-tat
+  * Alice向4个邻居发送chunk：正在向其发送chunk，速率最快的4个
+    * 每10s重新评估top 4
+  * 每30s随机选择一个其他节点，向其发送chunk
+    * 新选择节点可能加入top 4
+    * “optimistically unchoke”
