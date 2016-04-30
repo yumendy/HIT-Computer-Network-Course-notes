@@ -609,3 +609,146 @@
   * 节点和超级节点间维持TCP连接
   * 某些超级节点对之间维持TCP连接
 * 超级节点负责跟踪子节点的内容
+
+## Socket编程——应用编程接口(API)
+
+### 网络程序设计接口
+
+* 直接面向网卡编程
+  * 硬件相关
+* 基于Packet Driver编程
+  * 屏蔽网卡细节
+  * 适用于所有网卡
+* 基于NDIS网络编程
+  * Windows
+* 基于LibPcap/WinPcap、Libnet、Libnids、Libicmp编程
+* NetBIOS编程
+  * windows
+* Socket编程
+* WEB、RPC、中间件编程
+
+### 应用编程接口API
+
+应用编程接口API：就是应用进程的控制权和操作系统的控制权进行转换的一个系统调用接口。
+
+### 集中典型的应用编程接口
+
+* Berkeley UNIX操作系统定义了一种API，称为套接字接口，简称套接字、
+* 微软公司在其操作系统中采用了套接字接口API，形成了一个稍有不同的API，并称之为WINSOCK。
+* AT&T为其UNIX系统V定义了一种API，简写为TLI。
+
+### Socket API
+
+* 最初设计
+  * 面向BSD UNIX-Berkley
+  * 面向TCP/IP协议栈接口
+* 目前
+  * 事实上的工业标准
+  * 绝大多数操作系统都支持
+  * Internet网络应用最典型的API接口
+* 通信模型
+  * 客户/服务器
+* 应用进程间通信的抽象机制
+* 标识通信端点(对外)：
+  * IP地址+端口号
+* 操作系统/进程如何管理套接字(对内)?
+  * 套接字描述符
+    * 小整数
+
+### Socket抽象
+
+* 类似于文件的抽象
+* 当应用进程创建套接字时，操作系统分配一个数据结构存储该套接字相关信息
+* 返回套接字描述符
+
+### 地址结构
+
+```c
+struct sockaddr_in
+{
+  u_char sin_len;
+  u_char sin_family;
+  u_short sin_port;
+  struct in_addr sin_addr;
+  char sin_zero[8];
+}
+```
+
+* 使用TCP/IP协议簇的网络应用程序声明端点地址变量时，使用结构sockaddr_in
+
+## socket API 函数
+
+### socket API函数(winsock)
+
+WSAStartup
+
+```cpp
+int WSAStartup(WORD wVersionRequested, LPWSADATA lpWSAData);
+```
+
+* 使用socket的应用程序在使用socket之前必须首先调用WSAStartup函数
+* 两个参数：
+  * 第一个参数指明程序请求使用的WinSock版本，其中高位字节指明福版本、低位字节指明主版本
+    * 十六进制整数，例如0x102表示2.1版
+  * 第二个参数返回实际的winsock的版本信息
+    * 指向WSADATA结构的指针
+
+WSACleanup
+
+```cpp
+int WSACleanup(void);
+```
+
+* 应用程序在完成对请求的Socket库的使用，最后要调用WSACleanup函数
+* 解除与socket库的绑定
+* 释放socket库所占用的系统资源
+
+socket
+
+```cpp
+sd = socket(protofamily, type, proto);
+```
+
+* 创建套接字
+* 操作系统返回套接字描述符
+* 第一个参数(协议族)：protofamily = PF_INET (TCP/IP)
+* 第二个参数(套接字类型)：
+  * type = SOCK_STREAM， SOCK_DGRAM or SOCK_RAW (TCP/IP)
+* 第三个参数(协议号)：0为默认
+
+closesocket
+
+```cpp
+int closesocket(SOCKET sd);
+```
+
+* 关闭一个描述符为sd的套接字
+* 如果多个进程共享一个套接字，调用closesocket将套接字引用计数减1，减至0才关闭
+* 一个进程中的多线程对一个套接字的使用无计数
+  * 如果进程中的一个线程调用closesocket将一个套接字关闭，该进程中其他线程也将不能访问该套接字
+* 返回值：
+  * 0：成功
+  * SOCKET_ERROR：失败
+
+bind
+
+```cpp
+int bind(sd, localaddr, addrlen);
+```
+
+* 绑定套接字的本地端点地址
+  * IP地址+端口号
+* 参数：
+  * 套接字描述符(sd)
+  * 端点地址(localaddr)
+    * 结构sockaddr_in
+* 客户端程序一般不必调用bind函数
+* 服务器端
+  * 熟知端口号
+  * IP地址
+    * 地址通配符：INADDR_ANY
+
+### Socket面向TCP/IP的服务类型
+
+* TCP：可靠、面向连接、字节流传输、点对点
+* UDP：不可靠、无连接、数据报传输
