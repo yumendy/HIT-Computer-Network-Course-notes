@@ -748,7 +748,94 @@ int bind(sd, localaddr, addrlen);
   * IP地址
     * 地址通配符：INADDR_ANY
 
+listen
+
+```cpp
+int listen(sd, queuesize);
+```
+
+* 置服务器端的流套接字处于监听状态
+  * 仅用于服务端调用
+  * 仅用于面向连接的流套接字
+* 设置连接请求队列大小
+* 返回值：
+  * 0：成功
+  * SOCKET_ERROR：失败
+
+connect
+
+```cpp
+connect(sd, saddr, saddrlen);
+```
+
+* 客户程序调用connect函数来使客户套接字与特定计算机的特定端口的套接字进行连接
+* 仅用于客户端
+* 可用于TCP客户端也可以用于UDP客户端
+  * TCP客户端：建立TCP连接
+  * UDP客户端：指定服务器端点地址
+
+accept
+
+```cpp
+newsock = accept(sd, caddr, caddrlen);
+```
+
+* 服务程序调用accept函数从处于监听状态的流套接字sd的客户连接请求队列中取出排在最前的一个客户请求，并且创建一个新的套接字来与客户套接字创建连接通道
+  * 仅用于TCP套接字
+  * 仅用于服务器
+* 利用新创建的套接字与客户通信
+
+send, sendto
+
+```cpp
+send(sd, \*buf, len, flags);
+sendto(sd, \*buf, len, flags, destaddr, addrlen);
+```
+
+* send函数用于TCP套接字或调用了connect函数的UDP客户端套接字
+* sendto函数用于UDP服务器端套接字与未调用connect函数的UDP客户端套接字
+
+recv, recvfrom
+
+```cpp
+recv(sd, \*buf, len, flags);
+recvfrom(sd, \*buf, len, flags, senderaddr, saaddrlen);
+```
+
+* recv函数从TCP连接的另一端接收数据，或者从调用了connect函数的UDP客户端套接字接收服务器发来的数据
+* recvfrom函数用于从UDP服务器端套接字与未调用connect函数的UDP客户端套接字接收对端数据
+
+setsockopt, getsockopt
+
+```cpp
+int setsockopt(int sd, int level, int optname, \*optval, int optlen);
+int getsockopt(int sd, int level, int optname, \*optval, socklen_t \*optlen);
+```
+
+* setsockopt()函数用来设置套接字sd的选项参数
+* getsockopt()函数用于获取任意类型、任意状态套接口的选项当前值，并把结果存入optval
+
 ### Socket面向TCP/IP的服务类型
 
 * TCP：可靠、面向连接、字节流传输、点对点
 * UDP：不可靠、无连接、数据报传输
+
+### 关于网络字节顺序
+
+* TCP/IP定义了标准的用于协议头中的二进制整数表示：网络字节顺序
+* 某些socket API函数的参数需要存储为网络字节顺序(如IP地址、端口号等)
+* 可以实现本地字节顺序与网络字节顺序间转换的函数
+  * htons：本地字节顺序->网络字节顺序(16bits)
+  * ntohs：网络字节顺序->本地字节顺序(16bits)
+  * htonl：本地字节顺序->网络字节顺序(32bits)
+  * ntohl：网络字节顺序->本地字节顺序(32bits)
+
+### 网络应用的socket API调用基本流程
+
+SERVER(WSAStartup->s=socket()->bind(s)->listen(s)->ns=accept(s))
+CLIENT(WSAStartup->s=socket()->connect(s))
+SERVER(recv(ns))
+CLIENT(send(s)->recv(s))
+SERVER(send(ns))
+CLIENT(closesocket(s)->WSACleanup)
+SERVER(closesocket(ns))
