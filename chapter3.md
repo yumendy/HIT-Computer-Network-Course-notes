@@ -353,3 +353,43 @@ UDP为什么存在？
   * 如果某个分组丢失，可能会引发多个重复的ACK
 * 如果sender收到对同一数据的3个ACK，则假定该数据之后的段已经丢失
   * 快速重传：在定时器超时之前即进行重传
+
+## TCP流量控制
+
+### TCP流量控制
+
+* 接收方为TCP连接分配buffer
+* 上层应用可能处理buffer中数据的速度较慢
+* 发送方不会传输的太多太快以至于淹没接收方(buffer溢出)
+* 速度匹配机制
+* (假定TCP receiver丢弃乱序的segments)
+* receiver通过在segment的头部字段将rcvwindow告诉sender
+* sender限制自己已经发送的但还未收到ACK的数据不超过接收方的空闲rcvwindow尺寸
+* receiver告知sender rcvwindow=0，会出现什么情况
+
+### TCP连接管理
+
+* TCP sender和receiver在传输数据前需要建立连接
+* 初始化TCP变量
+  * seq.#
+  * buffer和流量控制信息
+* client：连接的发起者
+* server：等待客户连接请求
+
+  Three way handshake：
+    Step 1: client host sends TCP SYN segment to server
+      * specifies inital seq #
+      * no data
+    Step 2: server host receivers SYN, replies with SYNACK segment
+      * server allocates buffers
+      * specifies server initial seq.#
+    Step 3: client receivers SYNACK, replies with ACK segment, which may contain data
+
+### TCP连接管理：关闭
+
+closing a connextion:
+
+step 1: client向server发送TCP FIN控制segment
+step 2: server收到FIN，回复ACK。关闭连接，发送FIN
+step 3: client收到FIN，回复ACK。进入“等待”——如果收到FIN，会重新发送ACK
+step 4: server收到ACK。关闭连接。
