@@ -393,3 +393,155 @@ step 1: client向server发送TCP FIN控制segment
 step 2: server收到FIN，回复ACK。关闭连接，发送FIN
 step 3: client收到FIN，回复ACK。进入“等待”——如果收到FIN，会重新发送ACK
 step 4: server收到ACK。关闭连接。
+
+## 拥塞控制原理
+
+### 拥塞控制
+
+* 非正式定义：“太多发送主机发送了太多数据或者发送速度太快，以至于网络无法处理”
+* 表现：
+  * 分组丢失(路由器缓存溢出)
+  * 分组延迟过大(在路由器排队缓存中排队)
+  * 拥塞控制 VS 流量控制
+  * A top-10 problem.
+
+### 拥塞的成因和代价
+
+* 两个senders，两个receivers
+* 一个路由器，无限缓存
+* 没有重传
+* 拥塞时分组延迟太大
+* 达到最大throughput
+* 一个路由器，有限buffers
+* sender重传分组
+
+* 拥塞的代价
+  * 对给定的"goodput"，要做更多的工作(重传)
+  * 造成资源的浪费
+  * 当分组被drop时，任何用于该分组的“上游”传输能力全部被浪费掉
+
+### 拥塞控制的方法
+
+* 端到端拥塞控制
+  * 网络层不需要显式的提供支持
+  * 端系统通过观察loss，delay等网络行为判断是否发生拥塞
+  * TCP采取这种方法
+* 网络辅助的拥塞控制
+  * 路由器像发送方显式地反馈网络拥塞信息
+  * 简单的拥塞指示(1bit): SNA, DECbit,TCP/IP ECN, ATM
+  * 指示发送方应该采取何种速率
+
+### ATM ABR拥塞控制
+
+* ABR：available bit rate
+  * “弹性服务”
+  * 如果发送方路径“underloaded”
+    * 使用可用带宽
+  * 如果发送方路径拥塞
+    * 将发送速率降低到最低保障速率
+* RM(resource management) cells
+  * 发送方发送
+  * 交换机设置RM cell位(网络辅助)
+    * NI bit：rate不许增长
+    * CI bit：拥塞指示
+  * RM cell由接收方返回给发送方
+* 在RM cell中有显式的速率(ER)字段：两个字节
+  * 拥塞的交换机可以将ER置为更低的值
+  * 发送方获知路径所能支持的最小速率
+* 数据cell中的EFCI位：拥塞的交换机将其设为1
+  * 如果RM cell前面的data cell的EFCI位被设为1，那么发送方在返回的RM cell中置CI位
+
+## TCP拥塞控制
+
+### TCP拥塞控制的基本原理
+
+* sender限制发送速率
+  * LastByteSent - LastByteAcked <= CongWin
+  * rate = CongWin / RTT (Bytes/sec)
+* CongWin:
+  * 动态调整以改变发送速率
+  * 反映所感知到的网络拥塞
+* 如何感知网络拥塞
+  * Loss事件 = timeout或3个重复ACK
+  * 发生loss事件后，发送方降低速率
+* 如何合理地调整发送速率
+  * 加性增——乘性减：AIMD
+  * 慢启动：SS
+
+### 加性增——乘性减：AIMD
+
+* 原理：逐渐增加发送速率，谨慎探测可用带宽，直到发生loss
+* 方法：AIMD
+  * Additive Increase:每个RTT将congwin增大一个MSS——拥塞避免
+  * Multiplicative Decrease:发生loss后将CongWin减半
+
+### TCP慢启动：SS
+
+* TCP连接建立时，CongWin=1
+  * 初始速率=20kbps
+* 可用带宽可能远远高于初始速率：
+  * 希望快速增长
+* 原理：
+  * 当连接开始时，指数性增长
+* 指数性增长
+  * 每个RTT将CongWin翻倍
+  * 收到每个ACK进行操作
+* 初始速率很慢，但是快速攀升
+* 何时应该指数性增长切换为线性增长(拥塞避免)
+  * 当CongWin达到Loss事件前值的1/2时。
+  * 实现方法：
+    * 变量 Threshold
+    * Loss事件发生时，Threshold被设为Loss事件前CongWin值的1/2.
+
+### Loss事件的处理
+
+* 三个重复ACKs：
+  * CongWin切到一半
+  * 然后线性增长
+* Timeout事件：
+  * CongWin直接设为一个MSS
+  * 然后指数增长
+  * 达到threshold后，再线性增长
+* Philosophy：
+  * 三个重复ACKs表示网络还能够传输一些segments
+  * timeout事件表明拥塞更为严重
+
+### TCP拥塞控制：总结
+
+* 当拥塞窗口大小低于Threshold时，发送方处于慢启动状态，此时拥塞窗口应指数性增长。
+* 当拥塞窗口大大低于Threshold时，发送方处于拥塞避免状态，此时窗口应线性增长。
+* 当收到三个重复的ACK时，Threshold应当减为原来的一半，拥塞窗口设置为Threshold.
+* 当timeout事件发生，Threshold应当减为原来的一半，拥塞窗口减为1.
+
+## TCP性能分析
+
+### TCP吞吐率
+
+* 给定拥塞窗口大小和RTT，TCP的平均吞吐率是多少？
+  * 忽略掉Slow start
+* 假定发生超时时CongWin的大小为W，吞吐率是W/RTT
+* 超时后，CongWin=W/2，吞吐率是W/2 RTT
+* 平均吞吐率为：0.75W/RTT
+
+### 未来的TCP
+
+* 吞吐率与丢包率的关系
+  * CongWin从W/2增加至W时出现第一个丢包，那么一共发送的分组数为W/2+(W/2+1)+(W/2+2)+……+W=3W^2/8 + 3W/4
+  * W很大时，3W^2/8 >> 3W/4,因此L = 8/(3W^2)
+* L=2*10^-10
+* 高速网络下需要设计新的TCP
+
+### TCP的公平性
+
+* 公平性？
+  * 如果K个TCP Session共享相同的瓶颈带宽R，那么每个session的平均速率为R/K
+  * TCP是公平的
+* 公平性与UDP
+  * 多媒体应用通常不使用TCP，以免被拥塞控制机制限制速率
+  * 使用UDP：以恒定速率发送，能够容忍丢失
+  * 产生了不公平
+* 研究：TCP friendly
+* 公平性与并发TCP连接
+  * 某些应用会打开多个并发连接
+  * Web浏览器
+  * 产生公平性问题
